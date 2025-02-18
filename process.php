@@ -131,9 +131,51 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Isi Chat WhatsApp</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Include DataTables CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css">
+    <!-- Include jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Include DataTables JS -->
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+    <!-- Include DataTables Responsive CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.dataTables.min.css">
+    <!-- Include DataTables Responsive JS -->
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
+    <script>
+
+        function toggleMessageCount() {
+            const messageCountDiv = document.getElementById('messageCount');
+            if (messageCountDiv.style.display === 'none') {
+                messageCountDiv.style.display = 'block';
+            } else {
+                messageCountDiv.style.display = 'none';
+            }
+        }
+        // Initialize DataTable
+        $(document).ready(function() {
+            const table = $('#chatTable').DataTable({
+                responsive: {
+                    details: {
+                        type: 'column',
+                        target: -1 // This targets the last column for responsive control
+                    }
+                },
+                columnDefs: [
+                    { responsivePriority: 1, targets: 2 } // Ensure the "Pesan" column (index 2) is prioritized for visibility
+                ]
+            });
+
+            // Add click event to each sender's message count
+            $('#messageCount li').on('click', function() {
+                const sender = $(this).data('sender');
+                table.search(sender).draw();
+                toggleMessageCount();
+            });
+        });
+    </script>
 </head>
 <body class="bg-gray-100 p-8">
-    <div class="max-w-7xl mx-auto">
+    <div class="mx-auto">
         <div class="bg-white rounded-lg shadow-md p-6">
             <h1 class="text-2xl font-bold mb-4">Isi Chat WhatsApp 
                 <?php 
@@ -147,52 +189,58 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 ?>
             </h1>
             
-            <div class="mb-4 p-4 bg-gray-50 rounded-md">
-                <h2 class="text-sm font-medium text-gray-700 mb-2">Total Pengirim:</h2>
-                <p class="text-sm text-gray-700"><?php echo count($message_count); ?> pengirim</p>
-            </div>
-
-            <div class="mb-4 p-4 bg-gray-50 rounded-md">
-                <h2 class="text-sm font-medium text-gray-700 mb-2">Pesan per Pengirim:</h2>
-                <ul class="list-disc pl-5">
-                    <?php foreach ($message_count as $sender => $count): ?>
-                        <li class="text-sm text-gray-700">
-                            <?php echo htmlspecialchars($sender); ?>: <?php echo $count; ?> pesan
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal & Waktu</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pengirim</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pesan</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        <?php foreach ($messages as $message): ?>
-                        <tr class="">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 align-top">
-                                <?php echo htmlspecialchars($message['datetime']); ?>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 align-top">
-                                <?php echo htmlspecialchars($message['sender']); ?>
-                            </td>
-                            <td class="px-6 py-4 text-sm text-gray-900 whitespace-pre-line align-top">
-                                <?php echo htmlspecialchars($message['message']); ?>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <a href="index.php" class="inline-block mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+            <a href="index.php" class="inline-block mt-4 text-sm md:text-base p-1 md:px-4 md:py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
                 Unggah File Lain
             </a>
+            
+            <div class="flex flex-col md:flex-row justify-end">
+
+                <div class="w-full md:w-1/3 px-2">
+                    <div class="mb-4 p-4 bg-gray-50 rounded-md">
+                        <h2 class="text-sm font-medium text-gray-700 mb-2">Total Pengirim:</h2>
+                        <p class="text-sm text-gray-700"><?php echo count($message_count); ?> pengirim</p>
+                    </div>
+                    <div class="mb-4 p-4 bg-gray-50 rounded-md">
+                        <h2 onclick="toggleMessageCount()" class="text-sm font-medium text-blue-500 mb-2 underline cursor-pointer">Pesan per Pengirim</h2>
+                        <ul id="messageCount" class="flex flex-wrap">
+                            <?php foreach ($message_count as $sender => $count): ?>
+                                <li class="text-sm text-gray-700 cursor-pointer p-1 mb-1" data-sender="<?php echo htmlspecialchars($sender); ?>">
+                                    <?php echo htmlspecialchars($sender); ?> <span class="bg-blue-500 text-white rounded-md px-1"><?php echo $count; ?></span>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="w-full md:w- 2/3 overflow-x-auto">
+                    <table id="chatTable" class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal & Waktu</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pengirim</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pesan</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <?php foreach ($messages as $message): ?>
+                            <tr class="">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 align-top">
+                                    <?php echo htmlspecialchars($message['datetime']); ?>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 align-top">
+                                    <?php echo htmlspecialchars($message['sender']); ?>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-900 whitespace-pre-line align-top">
+                                    <?php echo htmlspecialchars($message['message']); ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
         </div>
     </div>
 </body>
