@@ -1,4 +1,10 @@
 <?php
+session_start(); // Start the session
+
+$messages = $_SESSION['messages'] ?? [];
+$start_date = $_SESSION['start_date'] ?? null;
+$end_date = $_SESSION['end_date'] ?? null;
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Periksa apakah file diunggah tanpa error
     if (isset($_FILES["zipfile"]) && $_FILES["zipfile"]["error"] == 0) {
@@ -112,17 +118,39 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
             rmdir($temp_dir);
 
-            $message_count = [];
-            foreach ($messages as $message) {
-                $sender = $message['sender'];
-                if (!isset($message_count[$sender])) {
-                    $message_count[$sender] = 0;
-                }
-                $message_count[$sender]++;
-            }
+            $_SESSION['messages'] = $messages; // Store messages in session
+            $_SESSION['start_date'] = $start_date;
+            $_SESSION['end_date'] = $end_date;
 
-            // Urutkan pengirim berdasarkan nama secara ascending
-            ksort($message_count);
+        }else{
+            echo "Gagal membuka file ZIP";
+            exit();
+        }
+    }else{
+        echo "Error mengunggah file";
+        exit();
+    }
+}
+
+$message_count = [];
+foreach ($messages as $message) {
+    $sender = $message['sender'];
+    if (!isset($message_count[$sender])) {
+        $message_count[$sender] = 0;
+    }
+    $message_count[$sender]++;
+}
+
+$sort = $_GET['sort'] ?? 'asc';
+if($sort){
+    if($sort == 'asc'){
+        asort($message_count);
+    }elseif($sort == 'desc'){
+        arsort($message_count);
+    }elseif($sort == 'sender'){
+        ksort($message_count);
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -145,10 +173,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         function toggleMessageCount() {
             const messageCountDiv = document.getElementById('messageCount');
+            const icon = document.getElementById('toggleIcon');
             if (messageCountDiv.style.display === 'none') {
                 messageCountDiv.style.display = 'block';
+                icon.textContent = '-'; // Change to minus icon
             } else {
                 messageCountDiv.style.display = 'none';
+                icon.textContent = '+'; // Change to plus icon
             }
         }
         // Initialize DataTable
@@ -177,21 +208,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <body class="bg-gray-100 p-8">
     <div class="mx-auto">
         <div class="bg-white rounded-lg shadow-md p-6">
-            <h1 class="text-2xl font-bold mb-4">Isi Chat WhatsApp 
-                <?php 
-                if ($start_date && $end_date) {
-                    echo "dari " . date('d F Y', $start_date) . " sampai " . date('d F Y', $end_date);
-                } elseif ($start_date) {
-                    echo "dari " . date('d F Y', $start_date);
-                } elseif ($end_date) {
-                    echo "sampai " . date('d F Y', $end_date);
-                }
-                ?>
-            </h1>
-            
-            <a href="index.php" class="inline-block mt-4 text-sm md:text-base p-1 md:px-4 md:py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-                Unggah File Lain
-            </a>
+            <div class="flex flex-col md:flex-row justify-between mb-4">
+                <h1 class="text-2xl font-bold">Isi Chat WhatsApp 
+                    <?php 
+                    if ($start_date && $end_date) {
+                        echo "dari " . date('d F Y', $start_date) . " sampai " . date('d F Y', $end_date);
+                    } elseif ($start_date) {
+                        echo "dari " . date('d F Y', $start_date);
+                    } elseif ($end_date) {
+                        echo "sampai " . date('d F Y', $end_date);
+                    }
+                    ?>
+                </h1>
+                
+                <a href="index.php?clear=true" class="inline-block text-sm md:text-base p-1 md:px-4 md:py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                    Unggah File Lain
+                </a>
+            </div>
             
             <div class="flex flex-col md:flex-row justify-end">
 
@@ -200,8 +233,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <h2 class="text-sm font-medium text-gray-700 mb-2">Total Pengirim:</h2>
                         <p class="text-sm text-gray-700"><?php echo count($message_count); ?> pengirim</p>
                     </div>
+                    <div class="flex flex-col md:flex-row justify-around">
+                        <a href="process.php?sort=asc" class="mb-1 md:mb-0 <?php echo $sort == 'asc' ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-gray-200 hover:bg-gray-300'; ?> rounded-md px-2 py-1 text-sm">urut terkecil</a>
+                        <a href="process.php?sort=desc" class="mb-1 md:mb-0 <?php echo $sort == 'desc' ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-gray-200 hover:bg-gray-300'; ?> rounded-md px-2 py-1 text-sm">urut terbesar</a>
+                        <a href="process.php?sort=sender" class="mb-1 md:mb-0 <?php echo $sort == 'sender' ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-gray-200 hover:bg-gray-300'; ?> rounded-md px-2 py-1 text-sm">urut pengirim</a>
+                    </div>
                     <div class="mb-4 p-4 bg-gray-50 rounded-md">
-                        <h2 onclick="toggleMessageCount()" class="text-sm font-medium text-blue-500 mb-2 underline cursor-pointer">Pesan per Pengirim</h2>
+                        <h2 onclick="toggleMessageCount()" class="text-sm font-medium text-blue-500 mb-2 underline cursor-pointer">
+                            Pesan per Pengirim <span id="toggleIcon">-</span>
+                        </h2>
                         <ul id="messageCount" class="flex flex-wrap">
                             <?php foreach ($message_count as $sender => $count): ?>
                                 <li class="text-sm text-gray-700 cursor-pointer p-1 mb-1" data-sender="<?php echo htmlspecialchars($sender); ?>">
@@ -245,15 +285,3 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </div>
 </body>
 </html>
-<?php
-        } else {
-            echo "Gagal membuka file ZIP";
-        }
-    } else {
-        echo "Error mengunggah file";
-    }
-} else {
-    header("Location: index.php");
-    exit();
-}
-?>

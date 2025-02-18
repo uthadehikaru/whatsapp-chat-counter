@@ -1,3 +1,14 @@
+<?php
+session_start();
+
+if(isset($_GET['clear']) && $_GET['clear'] == 'true'){
+    unset($_SESSION['messages']);
+}
+if (isset($_SESSION['messages'])) {
+    header("Location: process.php");
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
