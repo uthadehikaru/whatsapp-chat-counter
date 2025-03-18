@@ -4,8 +4,13 @@ session_start(); // Start the session
 $messages = $_SESSION['messages'] ?? [];
 $start_date = $_SESSION['start_date'] ?? null;
 $end_date = $_SESSION['end_date'] ?? null;
+$members = $_SESSION['members'] ?? null;
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_members'])) {
+    $members = explode(',', $_POST['members']);
+    $members = array_map('trim', $members);
+    $_SESSION['members'] = $members;
+}elseif($_SERVER["REQUEST_METHOD"] == "POST"){
     // Periksa apakah file diunggah tanpa error
     if (isset($_FILES["zipfile"]) && $_FILES["zipfile"]["error"] == 0) {
         $allowed = array("zip" => "application/x-zip-compressed");
@@ -24,6 +29,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (isset($_POST['end_date']) && !empty($_POST['end_date'])) {
             $end_date = strtotime($_POST['end_date'] . ' 23:59:59'); // Termasuk seluruh tanggal akhir
         }
+
+        // Ambil daftar anggota
+        $members = isset($_POST['members']) ? explode(',', $_POST['members']) : [];
+        $members = array_map('trim', $members);
 
         // Verifikasi tipe file
         if (!in_array($filetype, $allowed)) {
@@ -121,6 +130,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION['messages'] = $messages; // Store messages in session
             $_SESSION['start_date'] = $start_date;
             $_SESSION['end_date'] = $end_date;
+            $_SESSION['members'] = $members;
 
         }else{
             echo "Gagal membuka file ZIP";
@@ -133,6 +143,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 $message_count = [];
+if($members){
+    foreach($members as $member){
+        $message_count[$member] = 0;
+    }
+}
+
+// Count messages for each sender
 foreach ($messages as $message) {
     $sender = $message['sender'];
     if (!isset($message_count[$sender])) {
@@ -230,8 +247,12 @@ if($sort){
 
                 <div class="w-full md:w-1/3 px-2">
                     <div class="mb-4 p-4 bg-gray-50 rounded-md">
-                        <h2 class="text-sm font-medium text-gray-700 mb-2">Total Pengirim:</h2>
-                        <p class="text-sm text-gray-700"><?php echo count($message_count); ?> pengirim</p>
+                        <h2 class="text-sm font-medium text-gray-700 mb-2">Total Anggota: <?php echo count($members); ?></h2>
+                        <h2 class="text-sm font-medium text-gray-700 mb-2">Total Pengirim : <?php echo count(array_filter($message_count, function($count) { return $count > 0; })); ?></h2>
+                        <h2 class="text-sm font-medium text-gray-700 mb-2">Tidak hadir : <?php echo count(array_filter($message_count, function($count) { return $count == 0; })); ?></h2>
+                        <?php if(count($message_count) > count($members)){ ?>
+                            <h2 class="text-sm font-medium text-red-700 mb-2">Terdapat pengirim yang tidak ada dalam daftar anggota. Sesuaikan nama anggota dengan pengirim. </h2>
+                        <?php } ?>
                     </div>
                     <div class="flex flex-col md:flex-row justify-around">
                         <a href="process.php?sort=asc" class="mb-1 md:mb-0 <?php echo $sort == 'asc' ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-gray-200 hover:bg-gray-300'; ?> rounded-md px-2 py-1 text-sm">urut terkecil</a>
@@ -240,12 +261,23 @@ if($sort){
                     </div>
                     <div class="mb-4 p-4 bg-gray-50 rounded-md">
                         <h2 onclick="toggleMessageCount()" class="text-sm font-medium text-blue-500 mb-2 underline cursor-pointer">
-                            Pesan per Pengirim <span id="toggleIcon">-</span>
+                            Pesan tiap anggota <span id="toggleIcon">-</span>
                         </h2>
                         <ul id="messageCount" class="flex flex-wrap">
                             <?php foreach ($message_count as $sender => $count): ?>
                                 <li class="text-sm text-gray-700 cursor-pointer p-1 mb-1" data-sender="<?php echo htmlspecialchars($sender); ?>">
-                                    <?php echo htmlspecialchars($sender); ?> <span class="bg-blue-500 text-white rounded-md px-1"><?php echo $count; ?></span>
+                                    <?php 
+                                    if (in_array($sender, $members)) {
+                                        echo "<span class='text-green-500'>" . htmlspecialchars($sender) . "</span>";
+                                    } else {
+                                        echo "<span class='text-red-500'>" . htmlspecialchars($sender) . "</span>";
+                                    }
+                                    if($count > 0){
+                                        echo ' <span class="bg-blue-500 text-white rounded-md px-1">' . $count . '</span>';
+                                    }else{
+                                        echo ' <span class="bg-red-500 text-white rounded-md px-1">' . $count . '</span>';
+                                    }
+                                    ?>
                                 </li>
                             <?php endforeach; ?>
                         </ul>
@@ -253,6 +285,10 @@ if($sort){
                 </div>
 
                 <div class="w-full md:w- 2/3 overflow-x-auto">
+                    <form action="process.php" method="post" class="mb-4">
+                        <textarea name="members" id="members" class="w-full h-20 p-2 border border-gray-300 rounded-md"><?php echo implode(',', $members); ?></textarea>
+                        <button type="submit" name="update_members" class="bg-indigo-600 text-white rounded-md px-2 py-1 text-sm">Perbaharui anggota</button>
+                    </form>
                     <table id="chatTable" class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>

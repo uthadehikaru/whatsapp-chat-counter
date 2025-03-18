@@ -39,6 +39,11 @@ if (isset($_SESSION['messages'])) {
                     <input type="date" name="end_date" required 
                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Daftar Anggota (optional)</label>
+                    <textarea name="members" 
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Masukkan nomor/nama anggota, pisahkan dengan koma"></textarea>
+                </div>
                 <button type="submit" 
                         class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     Unggah dan Proses
