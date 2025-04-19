@@ -61,6 +61,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_members'])) {
             $zip->extractTo($temp_dir);
             $zip->close();
 
+            // Check for CSV file containing members data
+            $csv_files = glob($temp_dir . "/*.csv");
+            if (!empty($csv_files)) {
+                $csv_file = $csv_files[0]; // Take the first CSV file found
+                if (($handle = fopen($csv_file, "r")) !== FALSE) {
+                    $members = [];
+                    while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                        if (!empty($data[0])) { // Check if the first column has data
+                            $members[] = trim($data[0]);
+                        }
+                    }
+                    fclose($handle);
+                    $_SESSION['members'] = $members;
+                }
+            }
+
             $text_contents = [];
             $files = new RecursiveIteratorIterator(
                 new RecursiveDirectoryIterator($temp_dir)
