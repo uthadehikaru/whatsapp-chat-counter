@@ -238,9 +238,16 @@ if($sort){
                     ?>
                 </h1>
                 
-                <a href="index.php?clear=true" class="inline-block text-sm md:text-base p-1 md:px-4 md:py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-                    Unggah File Lain
-                </a>
+                <div class="flex gap-2">
+                    <form action="download.php" method="post" class="inline-block">
+                        <button type="submit" class="text-sm md:text-base p-1 md:px-4 md:py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                            Download Chat
+                        </button>
+                    </form>
+                    <a href="index.php?clear=true" class="inline-block text-sm md:text-base p-1 md:px-4 md:py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                        Unggah File Lain
+                    </a>
+                </div>
             </div>
             
             <div class="flex flex-col md:flex-row justify-end">
