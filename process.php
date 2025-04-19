@@ -31,7 +31,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_members'])) {
         }
 
         // Ambil daftar anggota
-        $members = isset($_POST['members']) ? explode(',', $_POST['members']) : [];
+        $members = isset($_POST['members'])  && !empty($_POST['members']) ? explode(',', $_POST['members']) : [];
         $members = array_map('trim', $members);
 
         // Verifikasi tipe file
@@ -90,33 +90,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_members'])) {
                     $lines = file($file->getPathname(), FILE_IGNORE_NEW_LINES);
                     
                     foreach ($lines as $line) {
-                        // Periksa apakah baris dimulai dengan pola tanggal (MM/DD/YY, HH:mm)
-                        if (preg_match('/^(\d{1,2}\/\d{1,2}\/\d{2,4},\s\d{1,2}:\d{2})\s-\s([^:]+):\s(.+)/', $line, $matches)) {
-                            // Konversi tanggal pesan ke timestamp untuk perbandingan
-                            $message_date = strtotime(str_replace(',', '', $matches[1]));
+                        // Check if line starts with a date pattern (M/D/YY or MM/DD/YYYY)
+                        $date_time_end = strpos($line, ' - ');
+                        if ($date_time_end !== false) {
+                            $date_time_part = substr($line, 0, $date_time_end);
                             
-                            // Lewati pesan di luar rentang tanggal
-                            if (($start_date && $message_date < $start_date) || 
-                                ($end_date && $message_date > $end_date)) {
-                                $current_message = null;
-                                continue;
+                            // Check if the date-time part contains a valid date format
+                            if (strpos($date_time_part, '/') !== false && strpos($date_time_part, ',') !== false) {
+                                $sender_end = strpos($line, ':', $date_time_end + 3);
+                                if ($sender_end !== false) {
+                                    $datetime = trim(substr($line, 0, $date_time_end));
+                                    $sender = trim(substr($line, $date_time_end + 3, $sender_end - ($date_time_end + 3)));
+                                    $message = trim(substr($line, $sender_end + 1));
+                                    
+                                    // Convert message date to timestamp for comparison
+                                    $message_date = strtotime(str_replace(',', '', $datetime));
+                                    
+                                    // Skip messages outside date range
+                                    if (($start_date && $message_date < $start_date) || 
+                                        ($end_date && $message_date > $end_date)) {
+                                        $current_message = null;
+                                        continue;
+                                    }
+                                    
+                                    // If there's a previous message, save it
+                                    if ($current_message) {
+                                        $messages[] = $current_message;
+                                    }
+                                    
+                                    // Start new message
+                                    $current_message = [
+                                        'datetime' => $datetime,
+                                        'sender' => $sender,
+                                        'message' => $message
+                                    ];
+                                }
                             }
-                            
-                            // Jika ada pesan sebelumnya, simpan
-                            if ($current_message) {
-                                $messages[] = $current_message;
-                            }
-                            
-                            $sender = trim($matches[2]);
-                            
-                            // Mulai pesan baru
-                            $current_message = [
-                                'datetime' => $matches[1],
-                                'sender' => $sender,
-                                'message' => $matches[3],
-                            ];
                         } elseif ($current_message) {
-                            // Tambahkan ke pesan saat ini jika ini adalah lanjutan
+                            // Add to current message if this is a continuation
                             $current_message['message'] .= "\n" . $line;
                         }
                     }
@@ -323,14 +334,11 @@ if($sort){
                         <tbody class="bg-white divide-y divide-gray-200">
                             <?php foreach ($messages as $message): ?>
                             <tr class="">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 align-top">
-                                    <?php echo htmlspecialchars($message['datetime']); ?>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 align-top"><?php echo htmlspecialchars($message['datetime']); ?>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 align-top">
-                                    <?php echo htmlspecialchars($message['sender']); ?>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 align-top"><?php echo htmlspecialchars($message['sender']); ?>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-gray-900 whitespace-pre-line align-top">
-                                    <?php echo htmlspecialchars($message['message']); ?>
+                                <td class="px-6 py-4 text-sm text-gray-900 whitespace-pre-line align-top"><?php echo htmlspecialchars($message['message']); ?>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
